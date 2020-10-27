@@ -56,7 +56,7 @@ class LowLevelApi(object):
     def __handle_response(self, response, throw_unless):
         if throw_unless and response.status_code not in throw_unless:
             raise Exception('Unexpected response code {status_code} is none of {expected} on {method} {url} - {headers} - {response}'.format(
-                status_code=response.status_code, expected=throw_unless, method=response.request.method, url=responst.request.url, headers=response.request.headers, response=response.text))
+                status_code=response.status_code, expected=throw_unless, method=response.request.method, url=response.request.url, headers=response.request.headers, response=response.text))
             
         if 'x-csrf-token' in response.headers:
             self.__headers['X-CSRF-Token'] = response.headers['x-csrf-token']

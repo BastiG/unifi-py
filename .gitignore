@@ -2,5 +2,6 @@
 config.py
 
 # no pyc files, no cache directories
-**.pyc
-__pycache__
+__pycache__/
+*.py[cod]
+
