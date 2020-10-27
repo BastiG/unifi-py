@@ -3,10 +3,10 @@
 class NetworkApiMixin(object):
     def __crud_request(self, path, site, id, data, proxy='network'):
         if id is None:
-            path = f'/api/s/{site}{path}'
+            path = '/api/s/{site}{path}'.format(site=site, path=path)
             method = 'GET' if data is None else 'POST'
         else:
-            path = f'/api/s/{site}{path}/{id}'
+            path = '/api/s/{site}{path}/{id}'.format(site=site, path=path, id=id)
             method = 'DELETE' if data is None else 'PUT'
 
         r = self._request(path, proxy=proxy, method=method, json=data)
