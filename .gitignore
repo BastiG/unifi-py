@@ -1,0 +1,6 @@
+# config contains credentials ...
+config.py
+
+# no pyc files, no cache directories
+**.pyc
+__pycache__
