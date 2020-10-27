@@ -1,28 +1,12 @@
 #!/usr/bin/env python
 
-from unifi import UnifiApi
+from unifi import UnifiController
 from config import USERNAME, PASSWORD, BASE_URL
 
-from json import dumps as json_dumps
-
-def json_print(json, indent=2):
-    print(json_dumps(json, indent=indent, sort_keys=True))
-
-def find_by_attr(data, _as_list=False, _path='data', **attrs):
-    if _path:
-        for el in _path.split('.'):
-            if el in data:
-                data = data[el]
-            else:
-                return None
-
-    results = list(filter(lambda x: all([key in x and x[key] in [value, str(value)] for key, value in attrs.items()]), data))
-    if _as_list:
-        return results
-    return results[0] if results else None
+from unifi.helper import find_by_attr, json_print
 
 
-networkconf = {
+new_network = {
     'name': 'Test208',
     'vlan': 208,
     'vlan_enabled': True,
@@ -38,7 +22,7 @@ id_vlan300 = 'NETv4_br300'
 id_net300 = '5f69abb388451604b25efc90'
 id_resolver_v6 = '5f6da5ebac870f0778fe16da'
 
-firewallrule = {
+new_firewallrule = {
     'action': 'drop',
     'dst_address': '',
     'dst_firewallgroup_ids': [ id_rfc1918 ],
@@ -63,7 +47,7 @@ firewallrule = {
     'state_new': False,
     'state_related': False
 }
-firewallrule = {
+new_firewallrule_v6 = {
     'action': 'drop',
     'dst_firewallgroup_ids': [ id_resolver_v6 ],
     'enabled': False,
@@ -77,50 +61,73 @@ firewallrule = {
     'src_networkconf_id': id_net300
 }
 
-unifi = UnifiApi(BASE_URL)
+unifi = UnifiController(BASE_URL)
+
+# status of Unifi Network Controller
+#json_print(unifi.status())
+
 if unifi.login(USERNAME, PASSWORD):
     print('Login successful')
 
-    #networks = unifi.networkconf()
-    #json_print(networks)
-    #networks = unifi.networkconf(data=networkconf)
-    #json_print(networks)
-    # json_print(find_by_attr(networks, vlan_enabled=False))
-    # json_print(unifi.network(id='5f7ae5511883e6099a8fa75b',data=network))
-    # udm.sites()
+    # current user info
+    #json_print(unifi.user())
+    # list of configured sites
+    #json_print(unifi.site())
+    # list of known devices
+    #json_print(unifi.device())
 
+    # list of networks
+    #json_print(unifi.networkconf())
+    # create new network from new_network
+    #networks = unifi.networkconf(data=new_network)
+    #json_print(networks)
+
+    # list switch port profiles
     portconfs = unifi.portconf()
     portconf_disabled = find_by_attr(portconfs, name='Disabled')
-    portconf_all = find_by_attr(portconfs, name='All')
-    # json_print(portconf_disabled)
+    portconf_enabled = find_by_attr(portconfs, name='All')
+    #json_print(portconf_disabled)
+    #json_print(portconf_enabled)
 
+    # get device 'udmpro1'
+    devices = unifi.device()
+    json_print(devices[0].get_port_profile('Port 6'))
     device = find_by_attr(unifi.device(), name='udmpro1')
-    # json_print(device)
-    port6 = find_by_attr(device, _path='port_table', name="Port 6")
+    #json_print(device)
+    # get port #6 from device port table
+    port = find_by_attr(device, _path='port_table', name="Port 6")
     port_overrides = device['port_overrides']
 
-    # print(f'Device {device["_id"]} Port 6 index: {port6["port_idx"]}')
-    port6_override = find_by_attr(port_overrides, _path=None, port_idx=port6['port_idx'])
-    if port6_override['portconf_id'] != portconf_disabled['_id']:
-        print('Port 6 is NOT disabled => will disable now')
-        port6_override['portconf_id'] = portconf_disabled['_id']
+    # find the override profile for our port
+    port_override = find_by_attr(device, _path='port_overrides', port_idx=port['port_idx'])
+    # default to the "enabled" profile
+    if not port_override:
+        port_override = {
+            'portconf_id': portconf_enabled['_id'],
+            'port_idx': port['port_idx']
+        }
+        device['port_overrides'].append(port_override)
+    
+    # toggle: if port is disabled then enable it and vice versa
+    if port_override['portconf_id'] != portconf_disabled['_id']:
+        print('Port is NOT disabled => will disable now')
+        port_override['portconf_id'] = portconf_disabled['_id']
     else:
-        print('Port 6 is already disabled => will enable now')
-        port6_override['portconf_id'] = portconf_all['_id']
+        print('Port is disabled => will enable now')
+        port_override['portconf_id'] = portconf_all['_id']
 
-    unifi.device(id=device['_id'], data={'port_overrides': port_overrides})
+    # update the port config on the device
+    unifi.device(id=device['_id'], data={'port_overrides': device['port_overrides']})
 
-    #json_print(port6)
-    #json_print(port_overrides)
-
-#   List
-#   firewall_rules = unifi.firewallrule()
-#   Create
-#    firewall_rules = unifi.firewallrule(data=firewallrule)
-#    json_print(firewall_rules)
+    # list firewall rules
+    #json_print(unifi.firewallrule())
+    # add firewall rule from new_firewallrule
+    #firewallrules = unifi.firewallrule(data=new_firewallrule)
+    #json_print(firewallrules)
 
     print('Logging out')
-    unifi.logout()
+    if not unifi.logout():
+        print('Logout failed')
 
 else:
     print('Login failed')

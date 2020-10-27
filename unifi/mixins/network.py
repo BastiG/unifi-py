@@ -1,16 +1,31 @@
 #!/usr/bin/env python
 
+from unifi.device import UnifiDevice
+
 class NetworkApiMixin(object):
-    def __crud_request(self, path, site, id, data, proxy='network'):
+    def __crud_request(self, path, site, id, data, proxy='network', map_to=None):
+        kwargs = {
+            'json': data
+        }
         if id is None:
             path = '/api/s/{site}{path}'.format(site=site, path=path)
-            method = 'GET' if data is None else 'POST'
+            kwargs['method'] = 'GET' if data is None else 'POST'
         else:
             path = '/api/s/{site}{path}/{id}'.format(site=site, path=path, id=id)
-            method = 'DELETE' if data is None else 'PUT'
+            kwargs['method'] = 'DELETE' if data is None else 'PUT'
 
-        r = self._request(path, proxy=proxy, method=method, json=data)
-        return r.json()
+        if self.is_unifi_os:
+            kwargs['proxy'] = proxy
+
+        r = self._request(path, **kwargs)
+
+        if map_to:
+            result = []
+            for item in r.json().get('data', []):
+                result.append(map_to(self, item))
+            return result
+        else:
+            return r.json()
 
 
     def networkconf(self, site='default', id=None, data=None):
@@ -24,5 +39,15 @@ class NetworkApiMixin(object):
 
     def device(self, site='default', id=None, data=None):
         path = '/rest/device' if id or data else '/stat/device'
-        return self.__crud_request(path, site, id, data)
+        return self.__crud_request(path, site, id, data, map_to=UnifiDevice)
 
+    def status(self):
+        r = self._request('/status',
+                          proxy='network' if self.is_unifi_os else None,
+                          anonymous=True)
+        return r.json()
+
+    def site(self):
+        r = self._request('/api/self/sites',
+                          proxy='network' if self.is_unifi_os else None)
+        return r.json()

@@ -9,8 +9,8 @@ class LowLevelApi(object):
     def __init__(self, base_url):
         self.__base_url = base_url
         self.__session = requests.session()
-        self.__headers = {'Origin': '{}/'.format(self.__base_url)}
 
+        self._headers = {'Origin': '{}'.format(self.__base_url)}
         self._logged_in = False
 
 
@@ -32,7 +32,7 @@ class LowLevelApi(object):
         request = requests.Request(
                 method=method,
                 url=url,
-                headers=self.__headers,
+                headers=self._headers,
                 json=json
             )
 
@@ -49,7 +49,7 @@ class LowLevelApi(object):
                                          path_params=path_params,
                                          json=json,
                                          method=method)
-        response = self.__session.send(request, verify=False)
+        response = self.__session.send(request, verify=False, allow_redirects=False)
         return self.__handle_response(response, throw_unless)
 
 
@@ -59,7 +59,7 @@ class LowLevelApi(object):
                 status_code=response.status_code, expected=throw_unless, method=response.request.method, url=response.request.url, headers=response.request.headers, response=response.text))
             
         if 'x-csrf-token' in response.headers:
-            self.__headers['X-CSRF-Token'] = response.headers['x-csrf-token']
-        self.__headers['Referer'] = response.url
+            self._headers['X-CSRF-Token'] = response.headers['x-csrf-token']
+        self._headers['Referer'] = response.url
         return response
 
