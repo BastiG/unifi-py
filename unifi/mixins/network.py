@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from unifi.device import UnifiDevice
+from unifi.objects import UnifiDeviceObject
 
 class NetworkApiMixin(object):
     def __crud_request(self, path, site, id, data, proxy='network', map_to=None):
@@ -39,7 +39,7 @@ class NetworkApiMixin(object):
 
     def device(self, site='default', id=None, data=None):
         path = '/rest/device' if id or data else '/stat/device'
-        return self.__crud_request(path, site, id, data, map_to=UnifiDevice)
+        return self.__crud_request(path, site, id, data, map_to=UnifiDeviceObject)
 
     def status(self):
         r = self._request('/status',

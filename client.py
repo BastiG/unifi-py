@@ -90,34 +90,17 @@ if unifi.login(USERNAME, PASSWORD):
     #json_print(portconf_enabled)
 
     # get device 'udmpro1'
-    devices = unifi.device()
-    json_print(devices[0].get_port_profile('Port 6'))
     device = find_by_attr(unifi.device(), name='udmpro1')
-    #json_print(device)
-    # get port #6 from device port table
-    port = find_by_attr(device, _path='port_table', name="Port 6")
-    port_overrides = device['port_overrides']
-
-    # find the override profile for our port
-    port_override = find_by_attr(device, _path='port_overrides', port_idx=port['port_idx'])
-    # default to the "enabled" profile
-    if not port_override:
-        port_override = {
-            'portconf_id': portconf_enabled['_id'],
-            'port_idx': port['port_idx']
-        }
-        device['port_overrides'].append(port_override)
-    
-    # toggle: if port is disabled then enable it and vice versa
-    if port_override['portconf_id'] != portconf_disabled['_id']:
-        print('Port is NOT disabled => will disable now')
-        port_override['portconf_id'] = portconf_disabled['_id']
+    port_profile = device.get_port_profile(name='Port 6')
+    if port_profile['_id'] == portconf_disabled['_id']:
+        print('Port is already disabled -> will enable now')
+        device.set_port_profile(portconf_enabled, name='Port 6')
     else:
-        print('Port is disabled => will enable now')
-        port_override['portconf_id'] = portconf_all['_id']
+        print('Port is NOT disabled -> will disable now')
+        device.set_port_profile(portconf_disabled, name='Port 6')
 
-    # update the port config on the device
-    unifi.device(id=device['_id'], data={'port_overrides': device['port_overrides']})
+    # json_print(device.port_overrides)
+    unifi.device(id=device._id, data={'port_overrides': device.port_overrides})
 
     # list firewall rules
     #json_print(unifi.firewallrule())
